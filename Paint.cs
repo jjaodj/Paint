@@ -14,8 +14,8 @@ namespace Demo
     {
         Stack<PictureBox> pictureBoxStack = new Stack<PictureBox>();
 
-        private Stack<Image> _undoStack = new Stack<Image>();
-        private Stack<Image> _redoStack = new Stack<Image>();
+        readonly Stack<Bitmap> UndoStack = new Stack<Bitmap>();
+        readonly Stack<Bitmap> RedoStack = new Stack<Bitmap>();
 
         private readonly object _undoRedoLocker = new object();
 
@@ -24,7 +24,7 @@ namespace Demo
         public Form1()
         {
             InitializeComponent();
-
+            this.KeyPreview = true;
             pictureBoxStack.Push(pictureBox1);
             bm = new Bitmap(pictureBox1.Width, pictureBox1.Height);
             g = Graphics.FromImage(bm);
@@ -131,6 +131,9 @@ namespace Demo
             //polygons
             cX = e.X;
             cY = e.Y;
+
+            UndoStack.Push((Bitmap)bm.Clone());
+            RedoStack.Clear();
         }
 
         private void pictureBox1_MouseMove(object sender, MouseEventArgs e)
@@ -282,31 +285,31 @@ namespace Demo
 
         private void Undo_Click(object sender, EventArgs e)
         {
-            lock (_undoRedoLocker)
+            if (UndoStack.Count > 0)
             {
-                if (_undoStack.Count > 0)
-                {
-                    _redoStack.Push(_undoStack.Pop());
-
-                    //OnUndo();
-                    pictureBox1.Image = _redoStack.Peek();
-                    pictureBox1.Refresh();
-                }
+                RedoStack.Push((Bitmap)bm.Clone());
+                bm = UndoStack.Pop();
+                g = Graphics.FromImage(bm);
+                pictureBox1.Image = bm;
+            }
+            else
+            {
+                MessageBox.Show("Nothing to undo");
             }
         }
 
         private void Redo_Click(object sender, EventArgs e)
         {
-            lock (_undoRedoLocker)
+            if (RedoStack.Count > 0)
             {
-                if (_redoStack.Count > 0)
-                {
-                    _undoStack.Push(_redoStack.Pop());
-
-                    //OnRedo();
-                    pictureBox1.Image = _undoStack.Peek();
-                    pictureBox1.Refresh();
-                }
+                UndoStack.Push((Bitmap)bm.Clone());
+                bm = RedoStack.Pop();
+                g = Graphics.FromImage(bm);
+                pictureBox1.Image = bm;
+            }
+            else
+            {
+                MessageBox.Show("Nothing to redo");
             }
         }
 
@@ -360,6 +363,46 @@ namespace Demo
 
         }
 
+        private void Form1_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Control && e.KeyCode == Keys.Z) // Ctrl+Z
+            {
+                PerformUndo();
+            }
+            else if (e.Control && e.KeyCode == Keys.Y) // Ctrl+Y
+            {
+                PerformRedo();
+            }
+        }
+        private void PerformUndo()
+        {
+            if (UndoStack.Count > 0)
+            {
+                RedoStack.Push((Bitmap)bm.Clone());
+                bm = UndoStack.Pop();
+                g = Graphics.FromImage(bm);
+                pictureBox1.Image = bm;
+            }
+            else
+            {
+                MessageBox.Show("Nothing to undo");
+            }
+        }
+
+        private void PerformRedo()
+        {
+            if (RedoStack.Count > 0)
+            {
+                UndoStack.Push((Bitmap)bm.Clone());
+                bm = RedoStack.Pop();
+                g = Graphics.FromImage(bm);
+                pictureBox1.Image = bm;
+            }
+            else
+            {
+                MessageBox.Show("Nothing to redo");
+            }
+        }
         private void size_pen_3_Click(object sender, EventArgs e)
         {
             index = 6;
